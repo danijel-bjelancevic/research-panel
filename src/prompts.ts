@@ -361,3 +361,66 @@ ${extras.groundingMd ? `\nA fact-check of the recommendation's load-bearing clai
 Reply with ONLY JSON in exactly this shape:
 { "verdict": "sign" | "dissent", "statement": "2–5 sentences" }`;
 }
+
+export function baselineSystem(): string {
+  return `You are a single senior consultant asked for your best recommendation on a research question. You work alone: no panel, no debate. Bring your full judgment, ground claims in evidence from web search, and cite source URLs inline as markdown links. Be concrete and specific; generic advice is worthless.`;
+}
+
+export function baselineUser(brief: string, ideaCount: number): string {
+  return `Research brief:
+
+${brief}
+
+Consider at least ${ideaCount} genuinely different candidate answers privately, pick the single strongest, and write the final recommendation dossier for it.
+
+Write in markdown, 600–1000 words, with exactly these sections:
+## Recommendation
+## Why this won
+## The strongest objections — and where they stand
+## Risks and mitigations
+## First step: a 2–4 week validation experiment
+## Open questions
+
+Steelman the objections honestly: where an objection has no convincing answer, say so plainly. No JSON, no preamble — start directly with "## Recommendation".`;
+}
+
+export function judgeSystem(): string {
+  return `You are an impartial judge comparing two recommendation dossiers written in answer to the same research brief. Judge ONLY the content against the rubric: the quality of the recommendation, its reasoning, its evidence, and its honesty about risks and open questions. Ignore any cues about how a dossier was produced (by one author or many, with or without debate) — provenance must not affect your scores. Longer is not better. Confident is not better. When asked for JSON, reply with ONLY the JSON object — no prose, no markdown fences.`;
+}
+
+export function judgeUser(
+  brief: string,
+  rubricLines: string,
+  candidateA: string,
+  candidateB: string,
+): string {
+  return `Research brief both candidates answered:
+
+${brief}
+
+## Rubric (score each candidate on each key, 0–10)
+${rubricLines}
+
+## Candidate A
+---
+${candidateA}
+---
+
+## Candidate B
+---
+${candidateB}
+---
+
+Score both candidates on every rubric key, then pick the winner: the dossier you would hand the owner if they could read only one. "tie" is allowed only when they are genuinely equal in usefulness. margin: "slim" (could go either way), "clear" (one is noticeably better), "decisive" (not close).
+
+Reply with ONLY JSON in exactly this shape:
+{
+  "scores": [
+    { "candidate": "A", "values": { "rubric_key": 0 } },
+    { "candidate": "B", "values": { "rubric_key": 0 } }
+  ],
+  "winner": "A" | "B" | "tie",
+  "margin": "slim" | "clear" | "decisive",
+  "rationale": "3–6 sentences: what decided it, citing specifics from both dossiers"
+}`;
+}

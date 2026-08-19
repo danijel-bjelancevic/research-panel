@@ -17,6 +17,7 @@ import {
 } from './config.js';
 import { BudgetExceededError } from './cost.js';
 import { runEngine, UserQuitError } from './engine.js';
+import { runEval } from './eval-run.js';
 import { log } from './log.js';
 import { OpenRouterClient, OpenRouterError } from './openrouter.js';
 import {
@@ -343,6 +344,77 @@ program
       handleFatal(err);
     }
   });
+
+program
+  .command('eval')
+  .description('Judge a finished session against a single-model baseline: does the panel beat one strong model?')
+  .argument('<dir>', 'finished session directory (contains state.json)')
+  .option('--baseline <model>', 'model that writes the solo baseline dossier (default: the session moderator)')
+  .option(
+    '--judge <model>',
+    'model that judges the dossiers blind (default: the session moderator; prefer a family that was not on the panel)',
+  )
+  .option('--no-search', 'disable web search for the baseline dossier')
+  .option('--max-cost <usd>', 'hard cost cap in USD for the eval', parsePositiveNumber, 5)
+  .action(
+    async (dir: string, opts: { baseline?: string; judge?: string; search: boolean; maxCost: number }) => {
+      try {
+        loadDotEnv(process.cwd());
+        const { paths, state } = loadSession(dir);
+        if (state.nextPhase !== 'done') {
+          throw new SessionError(
+            `this session is not finished (next phase: "${state.nextPhase}") — resume it first, then evaluate`,
+          );
+        }
+        const config = state.configSnapshot;
+        const baselineModel = opts.baseline ?? config.moderator.model;
+        const judgeModel = opts.judge ?? config.moderator.model;
+        const participants = new Set([...config.seats.map((s) => s.model), config.moderator.model]);
+        if (participants.has(judgeModel)) {
+          log.warn(
+            `the judge (${judgeModel}) participated in this session — self-preference is possible; consider --judge with an outside model`,
+          );
+        }
+        const client = new OpenRouterClient(requireApiKey(), config.requestTimeoutMs);
+        const search =
+          opts.search && config.webSearch.enabled
+            ? { engine: config.webSearch.engine, maxResults: config.webSearch.maxResults }
+            : null;
+        const record = await runEval({
+          client,
+          paths,
+          state,
+          baselineModel,
+          judgeModel,
+          maxCostUsd: opts.maxCost,
+          search,
+        });
+        log.phase('Eval verdict');
+        switch (record.outcome) {
+          case 'panel':
+            log.success(`the PANEL wins (${record.margin ?? 'slim'} margin) over ${baselineModel}`);
+            break;
+          case 'baseline':
+            log.warn(
+              `the BASELINE wins (${record.margin ?? 'slim'} margin) — the debate did not pay for itself on this topic`,
+            );
+            break;
+          case 'tie':
+            log.info('a tie — the panel added cost, not quality, on this topic');
+            break;
+          case 'split':
+            log.warn('inconclusive — the two judgings disagreed when the candidates were swapped (position bias)');
+            break;
+        }
+        log.plain(
+          `   panel cost $${record.panelCostUsd.toFixed(3)} vs baseline $${record.baselineCostUsd.toFixed(3)} (judging $${record.judgeCostUsd.toFixed(3)})`,
+        );
+        log.success(`eval report: ${paths.evalMdPath}`);
+      } catch (err) {
+        handleFatal(err);
+      }
+    },
+  );
 
 program
   .command('models')

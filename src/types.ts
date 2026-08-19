@@ -133,6 +133,33 @@ export const GroundingRecordSchema = z.object({
 });
 export type GroundingRecord = z.infer<typeof GroundingRecordSchema>;
 
+export const EvalJudgingSchema = z.object({
+  order: z.enum(['panel-first', 'baseline-first']),
+  winner: z.enum(['panel', 'baseline', 'tie']),
+  margin: z.enum(['slim', 'clear', 'decisive']),
+  rationale: z.string(),
+  scores: z.object({
+    panel: z.record(z.number()),
+    baseline: z.record(z.number()),
+  }),
+});
+export type EvalJudging = z.infer<typeof EvalJudgingSchema>;
+
+export const EvalRecordSchema = z.object({
+  createdAt: z.string(),
+  topic: z.string(),
+  baselineModel: z.string(),
+  judgeModel: z.string(),
+  panelCostUsd: z.number(),
+  baselineCostUsd: z.number(),
+  judgeCostUsd: z.number(),
+  outcome: z.enum(['panel', 'baseline', 'tie', 'split']),
+  margin: z.enum(['slim', 'clear', 'decisive']).optional(),
+  judgings: z.array(EvalJudgingSchema),
+  baselineDossier: z.string(),
+});
+export type EvalRecord = z.infer<typeof EvalRecordSchema>;
+
 export const PhaseSchema = z.enum([
   'brief',
   'personas',

@@ -50,6 +50,7 @@ research-panel run "..." --rounds 3 --max-cost 5     # tighter run
 research-panel run "..." --yes                       # skip the checkpoint (non-interactive)
 research-panel resume ~/research-panels/2026-07-31-find-me-a-saas-...   # continue a paused/crashed run
 research-panel report <session-dir>                  # (re)generate report.html for any session
+research-panel eval <session-dir>                    # judge the panel against a single-model baseline
 research-panel models anthropic/                     # browse models + pricing
 ```
 
@@ -64,6 +65,18 @@ Each session gets a directory under `~/research-panels/` (configurable):
 - `transcript.md` - the full debate, appended live as the run progresses.
 - `events.jsonl` - the structured event stream powering the viewer and report.
 - `state.json` - machine-readable state; enables `resume` after a crash, `quit`, or a blown cost cap.
+
+### The eval harness (`eval`)
+
+Multi-model debate costs real money, so the honest question deserves a real answer: **would one strong model, given the same brief, have done just as well?**
+
+`research-panel eval <session-dir>` takes a *finished* session and finds out:
+
+1. A **baseline model** (default: the session's moderator; override with `--baseline`) writes a solo dossier from the same brief, with the same section structure and web search, in one shot.
+2. A **judge model** (default: the moderator; override with `--judge` - prefer a family that was not on the panel, and the CLI warns you if the judge participated) scores both dossiers against the session's own rubric, blind: candidates are labeled A and B, and the judge is instructed to ignore provenance cues and length.
+3. The judging runs **twice with the candidates swapped**. Agreement gives a verdict at the more cautious margin; disagreement is reported as *inconclusive (position bias)* rather than papered over.
+
+The result lands in `eval.md` and `eval.json` in the session directory: verdict, per-rubric score tables for both orderings, judge rationales, the cost multiple the panel paid over the baseline, and a "how to read this honestly" section (n = 1, best-effort blinding, judge priors). Sometimes the answer will be that the debate did not pay for itself on that topic - that is the point of asking.
 
 ### The live viewer (`--ui`)
 

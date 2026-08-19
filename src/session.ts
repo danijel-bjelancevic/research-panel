@@ -18,6 +18,8 @@ export interface SessionPaths {
   dossierPath: string;
   eventsPath: string;
   reportPath: string;
+  evalJsonPath: string;
+  evalMdPath: string;
 }
 
 export function expandHome(path: string): string {
@@ -44,6 +46,8 @@ function sessionPaths(dir: string): SessionPaths {
     dossierPath: join(dir, 'dossier.md'),
     eventsPath: join(dir, 'events.jsonl'),
     reportPath: join(dir, 'report.html'),
+    evalJsonPath: join(dir, 'eval.json'),
+    evalMdPath: join(dir, 'eval.md'),
   };
 }
 

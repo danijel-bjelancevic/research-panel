@@ -19,7 +19,7 @@ The engine is a resumable state machine. `SessionState.nextPhase` drives a switc
 
 Phase order: `brief -> divergence -> personas -> checkpoint -> debate rounds -> vote -> synthesis -> grounding -> redteam -> signoff -> done`. Grounding runs only when web search is enabled; grounding and red team are individually toggleable in config.
 
-- `src/cli.ts` - commander entry: `run`, `resume`, `report`.
+- `src/cli.ts` - commander entry: `run`, `resume`, `report`, `eval`, `models`.
 - `src/engine.ts` - phase loop, checkpoint handling (terminal or browser bridge), budget/quit errors.
 - `src/phases.ts` - one function per phase; all model interaction goes through `PhaseCtx`.
 - `src/types.ts` - zod schemas for every record (ideas, critiques, votes, state). Schemas are the source of truth; types are inferred.
@@ -29,6 +29,7 @@ Phase order: `brief -> divergence -> personas -> checkpoint -> debate rounds -> 
 - `src/personas.ts` - moderator-designed personas, created AFTER divergence, aimed at the actual board.
 - `src/grounding.ts` - pure logic for the fact-check gate (verdict ordering, mechanical summary, markdown); model calls live in phases.ts.
 - `src/redteam.ts` - pure logic for the pre-mortem (risk scoring likelihood x severity, ordering, markdown); model calls live in phases.ts.
+- `src/eval.ts` / `src/eval-run.ts` - eval harness: pure outcome/rendering logic vs. orchestration (baseline dossier + double blinded judging with swapped candidate order). Writes eval.md/eval.json into the session dir; never mutates session state.
 - `src/events.ts` - append-only `events.jsonl`; powers the live UI and the HTML report.
 - `src/ui/` - localhost SSE server for `--ui` (live view + in-browser checkpoint).
 - `src/report.ts` / `src/report-html.ts` - markdown dossier + self-contained report.html.

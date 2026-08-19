@@ -168,3 +168,19 @@ export const VerifyOutSchema = z.object({
     .default([]),
 });
 export type VerifyOut = z.infer<typeof VerifyOutSchema>;
+
+export const JudgeOutSchema = z.object({
+  scores: z
+    .array(
+      z.object({
+        candidate: z.enum(['A', 'B']),
+        values: z.record(z.number().min(0).max(10)),
+      }),
+    )
+    .min(2)
+    .max(2),
+  winner: z.enum(['A', 'B', 'tie']),
+  margin: z.enum(['slim', 'clear', 'decisive']),
+  rationale: z.string().min(1),
+});
+export type JudgeOut = z.infer<typeof JudgeOutSchema>;
