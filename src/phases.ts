@@ -18,9 +18,13 @@ import {
   DivergenceOutSchema,
   ModeratorMergeOutSchema,
   PersonasOutSchema,
+  RedTeamModeratorOutSchema,
+  RedTeamOutSchema,
   SignoffOutSchema,
   VoteOutSchema,
 } from './schemas.js';
+import { failuresDigestMd, renderRedTeamMd } from './redteam.js';
+import type { RedTeamFailure } from './types.js';
 import { personaFor, resolvePersonas, seatsNeedingPersona } from './personas.js';
 import {
   activeIdeas,
@@ -479,12 +483,95 @@ export async function runSynthesis(ctx: PhaseCtx): Promise<void> {
   ctx.events.emit({ type: 'message', actor: 'moderator', kind: 'synthesis', markdown: ctx.state.synthesis });
 }
 
+export async function runRedTeam(ctx: PhaseCtx): Promise<void> {
+  log.phase('Phase 6 · Red team — pre-mortem');
+  ctx.events.emit({ type: 'phase', phase: 'redteam', label: 'Red team · pre-mortem' });
+  const config = cfg(ctx);
+  const synthesis = ctx.state.synthesis;
+  if (!synthesis) throw new Error('red team requested before synthesis was written');
+
+  const results = await perSeat(
+    ctx,
+    'red-teaming the recommendation',
+    async (seat) => {
+      const out = await chatJson(
+        ctx,
+        `${seat.id}/redteam`,
+        seat.model,
+        prompts.panelSystem(seat, config, personaFor(ctx.state.personas, seat)),
+        prompts.redteamUser(synthesis),
+        RedTeamOutSchema,
+        null,
+      );
+      ctx.events.emit({
+        type: 'message',
+        actor: seat.id,
+        kind: 'redteam',
+        markdown: out.failures
+          .map(
+            (f) =>
+              `**${f.title}** (${f.likelihood} likelihood, ${f.severity})\n\n${f.story}\n\n_Warning sign:_ ${f.warning_sign}\n\n_Mitigation:_ ${f.mitigation}`,
+          )
+          .join('\n\n---\n\n'),
+      });
+      return out;
+    },
+    1,
+  );
+
+  const failures: RedTeamFailure[] = results.flatMap(({ seat, result }) =>
+    result.failures.map((f) => ({
+      seatId: seat.id,
+      title: f.title,
+      story: f.story,
+      likelihood: f.likelihood,
+      severity: f.severity,
+      warningSign: f.warning_sign,
+      mitigation: f.mitigation,
+    })),
+  );
+
+  log.moderator('consolidating the pre-mortem…');
+  ctx.events.emit({ type: 'seat_working', actor: 'moderator', activity: 'consolidating the pre-mortem' });
+  const modOut = await chatJson(
+    ctx,
+    'moderator/redteam',
+    config.moderator.model,
+    prompts.moderatorSystem(),
+    prompts.redteamModeratorUser(synthesis, failuresDigestMd(failures)),
+    RedTeamModeratorOutSchema,
+    null,
+  );
+
+  const seatIds = new Set(config.seats.map((s) => s.id));
+  ctx.state.redteam = {
+    failures,
+    topRisks: modOut.top_risks.map((r) => ({
+      title: r.title,
+      likelihood: r.likelihood,
+      severity: r.severity,
+      warningSign: r.warning_sign,
+      mitigation: r.mitigation,
+      raisedBy: r.raised_by.filter((id) => seatIds.has(id)),
+    })),
+    proceedConditions: modOut.proceed_conditions,
+    summary: modOut.summary,
+  };
+
+  const md = renderRedTeamMd(ctx.state.redteam);
+  ctx.events.emit({ type: 'message', actor: 'moderator', kind: 'redteam_summary', markdown: md });
+  ctx.transcript(`\n${md}\n`);
+  log.moderator(modOut.summary);
+  log.info(`${ctx.state.redteam.topRisks.length} consolidated risk(s), ${modOut.proceed_conditions.length} proceed condition(s)`);
+}
+
 export async function runSignoff(ctx: PhaseCtx): Promise<void> {
-  log.phase('Phase 6 · Sign-off');
+  log.phase('Phase 7 · Sign-off');
   ctx.events.emit({ type: 'phase', phase: 'signoff', label: 'Sign-off' });
   const config = cfg(ctx);
   const synthesis = ctx.state.synthesis;
   if (!synthesis) throw new Error('sign-off requested before synthesis was written');
+  const redteamMd = ctx.state.redteam ? renderRedTeamMd(ctx.state.redteam) : undefined;
   const results = await perSeat(
     ctx,
     'signing off',
@@ -494,7 +581,7 @@ export async function runSignoff(ctx: PhaseCtx): Promise<void> {
         `${seat.id}/signoff`,
         seat.model,
         prompts.panelSystem(seat, config, personaFor(ctx.state.personas, seat)),
-        prompts.signoffUser(synthesis),
+        prompts.signoffUser(synthesis, redteamMd),
         SignoffOutSchema,
         null,
       );

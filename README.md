@@ -7,10 +7,10 @@ Everything goes through **OpenRouter** (one API key, one bill), and every seat c
 ## How a session works
 
 ```
-brief ──▶ blind divergence ──▶ personas ──▶ human checkpoint ──▶ debate rounds ──▶ synthesis ──▶ sign-off
- (moderator   (raw models        (moderator     (you drop ideas      (attack/defend/     (dossier)     (sign or
-  expands the  propose ideas      designs the    or add steering      revise + vote                     dissent)
-  topic)       independently)     panel lenses)  notes)               each round)
+brief ──▶ blind divergence ──▶ personas ──▶ human checkpoint ──▶ debate rounds ──▶ synthesis ──▶ red team ──▶ sign-off
+ (moderator   (raw models        (moderator     (you drop ideas      (attack/defend/     (dossier)    (pre-mortem    (sign or
+  expands the  propose ideas      designs the    or add steering      revise + vote                    on the         dissent)
+  topic)       independently)     panel lenses)  notes)               each round)                      winner)
 ```
 
 1. **Brief** - the moderator model expands your topic into a research brief (web-searched).
@@ -19,7 +19,9 @@ brief ──▶ blind divergence ──▶ personas ──▶ human checkpoint �
 4. **Checkpoint** - personas and the board are shown to you. Drop ideas, add binding steering notes, or just continue.
 5. **Debate** - each round, every seat must attack the two strongest ideas that aren't its own, then defend/revise/abandon its own. A moderator merges duplicates, drops killed ideas, and summarizes.
 6. **Vote** - from the minimum round onward, seats score every idea against the rubric and rank a top 3. The panel converges when enough seats agree on #1 (default 2 of 3).
-7. **Synthesis & sign-off** - the moderator writes the recommendation dossier; every seat signs or files a recorded dissent. Dissents don't block - they're some of the most useful output.
+7. **Synthesis** - the moderator writes the recommendation dossier, faithful to the debate: where an objection was never convincingly answered, the dossier says so.
+8. **Red team** - before anyone signs, every seat runs a pre-mortem on the winner through its persona: "it is 12 months later and this failed - tell the story." The moderator consolidates the failure stories into a ranked risk table (likelihood x severity), each risk with its earliest observable warning sign and a concrete mitigation, plus explicit proceed-only-if conditions. Disable with `"redTeam": { "enabled": false }` in the config.
+9. **Sign-off** - every seat signs or files a recorded dissent *with the pre-mortem risks in front of it*. Dissents don't block - they're some of the most useful output.
 
 If the round cap is hit without convergence, the leaderboard leader is selected and the dossier says so honestly.
 

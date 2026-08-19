@@ -9,6 +9,8 @@ export type MessageKind =
   | 'vote'
   | 'round_summary'
   | 'synthesis'
+  | 'redteam'
+  | 'redteam_summary'
   | 'signoff'
   | 'owner';
 

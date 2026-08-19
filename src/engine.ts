@@ -12,6 +12,7 @@ import {
   runDebateRound,
   runDivergence,
   runPersonas,
+  runRedTeam,
   runSignoff,
   runSynthesis,
   runVote,
@@ -83,6 +84,10 @@ export async function runEngine(opts: EngineOpts): Promise<SessionState> {
           break;
         case 'synthesis':
           await runSynthesis(ctx);
+          state.nextPhase = config.redTeam.enabled ? 'redteam' : 'signoff';
+          break;
+        case 'redteam':
+          await runRedTeam(ctx);
           state.nextPhase = 'signoff';
           break;
         case 'signoff':

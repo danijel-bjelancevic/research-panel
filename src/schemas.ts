@@ -105,3 +105,39 @@ export const SignoffOutSchema = z.object({
   statement: z.string().min(1),
 });
 export type SignoffOut = z.infer<typeof SignoffOutSchema>;
+
+export const RedTeamOutSchema = z.object({
+  failures: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        story: z.string().min(1),
+        likelihood: z.enum(['low', 'medium', 'high']),
+        severity: z.enum(['annoying', 'serious', 'fatal']),
+        warning_sign: z.string().min(1),
+        mitigation: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(4),
+});
+export type RedTeamOut = z.infer<typeof RedTeamOutSchema>;
+
+export const RedTeamModeratorOutSchema = z.object({
+  top_risks: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        likelihood: z.enum(['low', 'medium', 'high']),
+        severity: z.enum(['annoying', 'serious', 'fatal']),
+        warning_sign: z.string().min(1),
+        mitigation: z.string().min(1),
+        raised_by: z.array(z.string()).default([]),
+      }),
+    )
+    .min(1)
+    .max(6),
+  proceed_conditions: z.array(z.string().min(1)).min(1).max(5),
+  summary: z.string().min(1),
+});
+export type RedTeamModeratorOut = z.infer<typeof RedTeamModeratorOutSchema>;

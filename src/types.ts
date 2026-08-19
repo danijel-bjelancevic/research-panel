@@ -88,6 +88,35 @@ export const PersonaRecordSchema = z.object({
 });
 export type PersonaRecord = z.infer<typeof PersonaRecordSchema>;
 
+export const RedTeamFailureSchema = z.object({
+  seatId: z.string(),
+  title: z.string(),
+  story: z.string(),
+  likelihood: z.enum(['low', 'medium', 'high']),
+  severity: z.enum(['annoying', 'serious', 'fatal']),
+  warningSign: z.string(),
+  mitigation: z.string(),
+});
+export type RedTeamFailure = z.infer<typeof RedTeamFailureSchema>;
+
+export const RedTeamRiskSchema = z.object({
+  title: z.string(),
+  likelihood: z.enum(['low', 'medium', 'high']),
+  severity: z.enum(['annoying', 'serious', 'fatal']),
+  warningSign: z.string(),
+  mitigation: z.string(),
+  raisedBy: z.array(z.string()),
+});
+export type RedTeamRisk = z.infer<typeof RedTeamRiskSchema>;
+
+export const RedTeamRecordSchema = z.object({
+  failures: z.array(RedTeamFailureSchema),
+  topRisks: z.array(RedTeamRiskSchema),
+  proceedConditions: z.array(z.string()),
+  summary: z.string(),
+});
+export type RedTeamRecord = z.infer<typeof RedTeamRecordSchema>;
+
 export const PhaseSchema = z.enum([
   'brief',
   'personas',
@@ -95,6 +124,7 @@ export const PhaseSchema = z.enum([
   'checkpoint',
   'debate',
   'synthesis',
+  'redteam',
   'signoff',
   'done',
 ]);
@@ -118,6 +148,7 @@ export const SessionStateSchema = z.object({
   convergedAtRound: z.number().int().optional(),
   forcedByCap: z.boolean().optional(),
   synthesis: z.string().optional(),
+  redteam: RedTeamRecordSchema.optional(),
   signoffs: z.array(SignoffSchema),
   citations: z.array(CitationSchema),
   warnings: z.array(z.string()),
