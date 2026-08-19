@@ -17,7 +17,7 @@ Requires `OPENROUTER_API_KEY` in env or `.env` (gitignored - never commit it).
 
 The engine is a resumable state machine. `SessionState.nextPhase` drives a switch loop in `src/engine.ts`; each phase mutates state, then state is atomically saved so any crash or budget stop resumes exactly where it left off (`resume` command).
 
-Phase order: `brief -> divergence -> personas -> checkpoint -> debate rounds -> vote -> synthesis -> signoff -> done`.
+Phase order: `brief -> divergence -> personas -> checkpoint -> debate rounds -> vote -> synthesis -> grounding -> redteam -> signoff -> done`. Grounding runs only when web search is enabled; grounding and red team are individually toggleable in config.
 
 - `src/cli.ts` - commander entry: `run`, `resume`, `report`.
 - `src/engine.ts` - phase loop, checkpoint handling (terminal or browser bridge), budget/quit errors.
@@ -27,6 +27,8 @@ Phase order: `brief -> divergence -> personas -> checkpoint -> debate rounds -> 
 - `src/cost.ts` - `CostTracker`, hard `maxCostUsd` cap -> `BudgetExceededError` (session stays resumable).
 - `src/board.ts` / `src/convergence.ts` - idea board operations; convergence = N-of-M seats ranking the same idea #1, else round-cap fallback to leaderboard leader (dossier states this honestly).
 - `src/personas.ts` - moderator-designed personas, created AFTER divergence, aimed at the actual board.
+- `src/grounding.ts` - pure logic for the fact-check gate (verdict ordering, mechanical summary, markdown); model calls live in phases.ts.
+- `src/redteam.ts` - pure logic for the pre-mortem (risk scoring likelihood x severity, ordering, markdown); model calls live in phases.ts.
 - `src/events.ts` - append-only `events.jsonl`; powers the live UI and the HTML report.
 - `src/ui/` - localhost SSE server for `--ui` (live view + in-browser checkpoint).
 - `src/report.ts` / `src/report-html.ts` - markdown dossier + self-contained report.html.

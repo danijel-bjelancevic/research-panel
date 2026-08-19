@@ -5,10 +5,10 @@ Where research-panel is going. Ordered by intent, not by promise.
 ## Shipped
 
 - **Red-team pre-mortem** (v0.2): before sign-off, every seat attacks the winning recommendation through its persona ("it is 12 months later and this failed - tell the story"); the moderator consolidates a ranked risk table with early warning signs, mitigations, and proceed-only-if conditions. Seats sign with the risks in front of them.
+- **Grounding gate** (v0.2): the moderator extracts the dossier's load-bearing checkable claims; each gets its own web-searched fact-check with a supported / contested / unverified verdict and cited sources. Contested claims lead the table, feed the red team, and sit in front of every seat at sign-off.
 
 ## Next
 
-- **Grounding gate**: extract the load-bearing factual claims from the final dossier, verify each with targeted web search, and label them (supported / contested / unverified) with sources. A recommendation is only as good as its weakest claim.
 - **Panel vs. baseline eval**: run the same brief through the full panel and through a single strong model, then have a blind judge compare the outputs against the rubric. Answers the honest question: does the debate actually buy anything, and how much does it cost?
 - **Facet sub-panels**: the moderator splits a broad brief into 2-4 facets, mini-panels debate each in parallel, and a final round integrates the facet winners. For briefs too wide for one board.
 

@@ -54,6 +54,12 @@ export const ConfigSchema = z
       .default({ agreeSeats: 2 }),
     webSearch: WebSearchSchema.default({ enabled: true, engine: 'exa', maxResults: 5 }),
     redTeam: z.object({ enabled: z.boolean().default(true) }).default({ enabled: true }),
+    grounding: z
+      .object({
+        enabled: z.boolean().default(true),
+        maxClaims: z.number().int().min(3).max(8).default(6),
+      })
+      .default({ enabled: true, maxClaims: 6 }),
     rubric: z.array(RubricItemSchema).min(2).max(10).default(DEFAULT_RUBRIC),
     maxCostUsd: z.number().positive().max(500).default(10),
     outputDir: z.string().min(1).default('~/research-panels'),

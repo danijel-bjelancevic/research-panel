@@ -251,13 +251,53 @@ Write in markdown, 600–1000 words, with exactly these sections:
 Be faithful to the debate: where an objection was never convincingly answered, say so plainly. No JSON, no preamble — start directly with "## Recommendation".`;
 }
 
-export function redteamUser(synthesis: string): string {
-  return `The panel has converged on the recommendation below. Before sign-off, run a PRE-MORTEM on it.
+export function factCheckerSystem(): string {
+  return `You are an impartial fact-checker attached to a research panel of AI models. You verify one claim at a time using web search. Rules: prefer primary and recent sources; a claim is "supported" only when independent credible sources confirm it, "contested" when credible sources disagree with it or with each other, and "unverified" when you cannot find sufficient evidence either way. Never assert beyond what the sources show, and never let the claim's plausibility substitute for evidence. When asked for JSON, reply with ONLY the JSON object — no prose, no markdown fences.`;
+}
+
+export function claimsUser(synthesis: string, maxClaims: number): string {
+  return `Below is a research panel's final recommendation dossier. Extract its LOAD-BEARING factual claims for verification.
 
 ---
 ${synthesis}
 ---
 
+A load-bearing claim is an empirical, checkable statement the recommendation depends on: market sizes, competitor facts, pricing, regulations, technology capabilities, adoption numbers. If it turned out false, the recommendation would weaken or collapse.
+
+Rules:
+- Only checkable facts about the world. No opinions, no predictions, no statements about the panel itself.
+- Each claim self-contained: understandable and verifiable without reading the dossier.
+- At most ${maxClaims}, ordered by how much the recommendation rests on them.
+- For each, state in one sentence why the recommendation depends on it.
+
+Reply with ONLY JSON in exactly this shape:
+{ "claims": [ { "text": "The checkable claim as one sentence", "importance": "Why the recommendation rests on this" } ] }`;
+}
+
+export function verifyClaimUser(claim: string, importance: string): string {
+  return `Verify this claim with web search.
+
+Claim: ${claim}
+Why it matters: ${importance}
+
+Search for evidence, weigh the sources, and give your verdict:
+- "supported": independent credible sources confirm it.
+- "contested": credible sources disagree with the claim or with each other.
+- "unverified": you could not find sufficient evidence either way.
+
+The note must say what the evidence actually shows in 1–3 sentences, including numbers and dates where they matter. List the sources you relied on.
+
+Reply with ONLY JSON in exactly this shape:
+{ "verdict": "supported" | "contested" | "unverified", "note": "...", "sources": [ { "url": "https://...", "title": "..." } ] }`;
+}
+
+export function redteamUser(synthesis: string, groundingMd?: string): string {
+  return `The panel has converged on the recommendation below. Before sign-off, run a PRE-MORTEM on it.
+
+---
+${synthesis}
+---
+${groundingMd ? `\nA fact-check of the recommendation's load-bearing claims has already run. Weigh contested or unverified claims heavily — a recommendation resting on a shaky fact is a failure story waiting to happen:\n\n${groundingMd}\n` : ''}
 Imagine it is 12 months from now. The owner followed this recommendation, and it FAILED. Through your persona's lens, write the 2 to 3 most plausible, distinct failure stories. Rules:
 - Each failure must be specific to THIS recommendation. A failure story that would apply to any project is worthless.
 - Attack the recommendation's actual load-bearing assumptions: demand, distribution, execution capacity, timing, competition, regulation — whatever it truly rests on.
@@ -306,13 +346,16 @@ Reply with ONLY JSON in exactly this shape:
 }`;
 }
 
-export function signoffUser(synthesis: string, redteamMd?: string): string {
+export function signoffUser(
+  synthesis: string,
+  extras: { groundingMd?: string; redteamMd?: string } = {},
+): string {
   return `Below is the panel's final recommendation dossier. Give your verdict.
 
 ---
 ${synthesis}
 ---
-${redteamMd ? `\nThe panel also ran a pre-mortem on this recommendation. Sign or dissent with these risks in front of you:\n\n${redteamMd}\n` : ''}
+${extras.groundingMd ? `\nA fact-check of the recommendation's load-bearing claims:\n\n${extras.groundingMd}\n` : ''}${extras.redteamMd ? `\nThe panel also ran a pre-mortem on this recommendation. Sign or dissent with these risks in front of you:\n\n${extras.redteamMd}\n` : ''}
 "sign" means: you endorse this recommendation as the panel's best answer, including its stated risks. "dissent" means you do not — and your statement must say precisely why and what evidence would change your mind. A dissent is respected, recorded in the dossier, and does not block the recommendation; do NOT sign out of politeness.
 
 Reply with ONLY JSON in exactly this shape:

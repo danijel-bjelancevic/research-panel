@@ -141,3 +141,30 @@ export const RedTeamModeratorOutSchema = z.object({
   summary: z.string().min(1),
 });
 export type RedTeamModeratorOut = z.infer<typeof RedTeamModeratorOutSchema>;
+
+export const ClaimsOutSchema = z.object({
+  claims: z
+    .array(
+      z.object({
+        text: z.string().min(1),
+        importance: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(8),
+});
+export type ClaimsOut = z.infer<typeof ClaimsOutSchema>;
+
+export const VerifyOutSchema = z.object({
+  verdict: z.enum(['supported', 'contested', 'unverified']),
+  note: z.string().min(1),
+  sources: z
+    .array(
+      z.object({
+        url: z.string().min(1),
+        title: z.string().optional(),
+      }),
+    )
+    .default([]),
+});
+export type VerifyOut = z.infer<typeof VerifyOutSchema>;

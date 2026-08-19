@@ -4,6 +4,7 @@ import type { SessionState } from './types.js';
 import { activeIdeas, findIdea } from './board.js';
 import { computeLeaderboard } from './convergence.js';
 import { renderRedTeamMd } from './redteam.js';
+import { renderGroundingMd } from './grounding.js';
 
 export function renderDossier(state: SessionState): string {
   const config = state.configSnapshot;
@@ -49,6 +50,13 @@ export function renderDossier(state: SessionState): string {
     lines.push('---');
     lines.push('');
     lines.push(state.synthesis);
+    lines.push('');
+  }
+
+  if (state.grounding) {
+    lines.push('---');
+    lines.push('');
+    lines.push(renderGroundingMd(state.grounding));
     lines.push('');
   }
 

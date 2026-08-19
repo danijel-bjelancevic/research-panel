@@ -7,10 +7,9 @@ Everything goes through **OpenRouter** (one API key, one bill), and every seat c
 ## How a session works
 
 ```
-brief ──▶ blind divergence ──▶ personas ──▶ human checkpoint ──▶ debate rounds ──▶ synthesis ──▶ red team ──▶ sign-off
- (moderator   (raw models        (moderator     (you drop ideas      (attack/defend/     (dossier)    (pre-mortem    (sign or
-  expands the  propose ideas      designs the    or add steering      revise + vote                    on the         dissent)
-  topic)       independently)     panel lenses)  notes)               each round)                      winner)
+brief ──▶ divergence ──▶ personas ──▶ checkpoint ──▶ debate rounds ──▶ synthesis ──▶ grounding ──▶ red team ──▶ sign-off
+ (moderator  (blind raw     (board-aimed   (human        (attack/defend/     (dossier)    (fact-check    (pre-mortem   (sign or
+  brief)      proposals)     lenses)        steering)     vote each round)                 the claims)    the winner)   dissent)
 ```
 
 1. **Brief** - the moderator model expands your topic into a research brief (web-searched).
@@ -20,8 +19,9 @@ brief ──▶ blind divergence ──▶ personas ──▶ human checkpoint �
 5. **Debate** - each round, every seat must attack the two strongest ideas that aren't its own, then defend/revise/abandon its own. A moderator merges duplicates, drops killed ideas, and summarizes.
 6. **Vote** - from the minimum round onward, seats score every idea against the rubric and rank a top 3. The panel converges when enough seats agree on #1 (default 2 of 3).
 7. **Synthesis** - the moderator writes the recommendation dossier, faithful to the debate: where an objection was never convincingly answered, the dossier says so.
-8. **Red team** - before anyone signs, every seat runs a pre-mortem on the winner through its persona: "it is 12 months later and this failed - tell the story." The moderator consolidates the failure stories into a ranked risk table (likelihood x severity), each risk with its earliest observable warning sign and a concrete mitigation, plus explicit proceed-only-if conditions. Disable with `"redTeam": { "enabled": false }` in the config.
-9. **Sign-off** - every seat signs or files a recorded dissent *with the pre-mortem risks in front of it*. Dissents don't block - they're some of the most useful output.
+8. **Grounding** - the moderator extracts the dossier's load-bearing *checkable* claims (market facts, competitor facts, pricing, regulation - not opinions), and each claim gets its own web-searched fact-check with a verdict: **supported** (independent sources confirm), **contested** (credible sources disagree), or **unverified** (insufficient evidence), with sources cited. A recommendation is only as good as its weakest claim, so contested claims lead the table. Skipped honestly when web search is off - fact-checking from model priors would be guesswork. Configure with `"grounding": { "enabled": true, "maxClaims": 6 }`.
+9. **Red team** - before anyone signs, every seat runs a pre-mortem on the winner through its persona: "it is 12 months later and this failed - tell the story," with the fact-check results in hand (a contested claim is a failure story waiting to happen). The moderator consolidates the failure stories into a ranked risk table (likelihood x severity), each risk with its earliest observable warning sign and a concrete mitigation, plus explicit proceed-only-if conditions. Disable with `"redTeam": { "enabled": false }`.
+10. **Sign-off** - every seat signs or files a recorded dissent *with the fact-check and pre-mortem risks in front of it*. Dissents don't block - they're some of the most useful output.
 
 If the round cap is hit without convergence, the leaderboard leader is selected and the dossier says so honestly.
 

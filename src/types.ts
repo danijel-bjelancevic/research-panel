@@ -117,6 +117,22 @@ export const RedTeamRecordSchema = z.object({
 });
 export type RedTeamRecord = z.infer<typeof RedTeamRecordSchema>;
 
+export const GroundedClaimSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  importance: z.string(),
+  verdict: z.enum(['supported', 'contested', 'unverified']),
+  note: z.string(),
+  sources: z.array(CitationSchema),
+});
+export type GroundedClaim = z.infer<typeof GroundedClaimSchema>;
+
+export const GroundingRecordSchema = z.object({
+  claims: z.array(GroundedClaimSchema),
+  summary: z.string(),
+});
+export type GroundingRecord = z.infer<typeof GroundingRecordSchema>;
+
 export const PhaseSchema = z.enum([
   'brief',
   'personas',
@@ -124,6 +140,7 @@ export const PhaseSchema = z.enum([
   'checkpoint',
   'debate',
   'synthesis',
+  'grounding',
   'redteam',
   'signoff',
   'done',
@@ -148,6 +165,7 @@ export const SessionStateSchema = z.object({
   convergedAtRound: z.number().int().optional(),
   forcedByCap: z.boolean().optional(),
   synthesis: z.string().optional(),
+  grounding: GroundingRecordSchema.optional(),
   redteam: RedTeamRecordSchema.optional(),
   signoffs: z.array(SignoffSchema),
   citations: z.array(CitationSchema),

@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 import * as prompts from './prompts.js';
 import {
+  ClaimsOutSchema,
   DebateOutSchema,
   DivergenceOutSchema,
   ModeratorMergeOutSchema,
@@ -21,10 +22,12 @@ import {
   RedTeamModeratorOutSchema,
   RedTeamOutSchema,
   SignoffOutSchema,
+  VerifyOutSchema,
   VoteOutSchema,
 } from './schemas.js';
 import { failuresDigestMd, renderRedTeamMd } from './redteam.js';
-import type { RedTeamFailure } from './types.js';
+import { groundingSummary, renderGroundingMd } from './grounding.js';
+import type { GroundedClaim, RedTeamFailure } from './types.js';
 import { personaFor, resolvePersonas, seatsNeedingPersona } from './personas.js';
 import {
   activeIdeas,
@@ -483,13 +486,97 @@ export async function runSynthesis(ctx: PhaseCtx): Promise<void> {
   ctx.events.emit({ type: 'message', actor: 'moderator', kind: 'synthesis', markdown: ctx.state.synthesis });
 }
 
+export async function runGrounding(ctx: PhaseCtx): Promise<void> {
+  log.phase('Phase 6 · Grounding — fact-check of the recommendation');
+  ctx.events.emit({ type: 'phase', phase: 'grounding', label: 'Grounding · fact-check' });
+  const config = cfg(ctx);
+  const synthesis = ctx.state.synthesis;
+  if (!synthesis) throw new Error('grounding requested before synthesis was written');
+
+  log.moderator('extracting the load-bearing claims…');
+  ctx.events.emit({ type: 'seat_working', actor: 'moderator', activity: 'extracting load-bearing claims' });
+  const claimsOut = await chatJson(
+    ctx,
+    'moderator/claims',
+    config.moderator.model,
+    prompts.moderatorSystem(),
+    prompts.claimsUser(synthesis, config.grounding.maxClaims),
+    ClaimsOutSchema,
+    null,
+  );
+  const toVerify = claimsOut.claims.slice(0, config.grounding.maxClaims);
+  log.info(`${toVerify.length} claim(s) to verify`);
+
+  const settled = await Promise.allSettled(
+    toVerify.map(async (claim, i) => {
+      const id = `c${i + 1}`;
+      ctx.events.emit({ type: 'seat_working', actor: 'moderator', activity: `verifying claim ${id}` });
+      const out = await chatJson(
+        ctx,
+        `factcheck/${id}`,
+        config.moderator.model,
+        prompts.factCheckerSystem(),
+        prompts.verifyClaimUser(claim.text, claim.importance),
+        VerifyOutSchema,
+        searchOpts(ctx),
+      );
+      return { id, claim, out };
+    }),
+  );
+
+  let budgetError: BudgetExceededError | undefined;
+  const claims: GroundedClaim[] = [];
+  settled.forEach((outcome, i) => {
+    const id = `c${i + 1}`;
+    const claim = toVerify[i];
+    if (outcome.status === 'fulfilled') {
+      const { out } = outcome.value;
+      claims.push({
+        id,
+        text: claim.text,
+        importance: claim.importance,
+        verdict: out.verdict,
+        note: out.note,
+        sources: out.sources,
+      });
+      addCitations(ctx.state, out.sources);
+      return;
+    }
+    if (outcome.reason instanceof BudgetExceededError) {
+      budgetError = outcome.reason;
+      return;
+    }
+    const msg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
+    const warning = `claim ${id} could not be verified (${msg}) — recorded as unverified`;
+    ctx.state.warnings.push(warning);
+    log.warn(warning);
+    ctx.events.emit({ type: 'warning', text: warning });
+    claims.push({
+      id,
+      text: claim.text,
+      importance: claim.importance,
+      verdict: 'unverified',
+      note: 'Verification did not complete; treat this claim with caution.',
+      sources: [],
+    });
+  });
+  if (budgetError) throw budgetError;
+
+  ctx.state.grounding = { claims, summary: groundingSummary(claims) };
+  const md = renderGroundingMd(ctx.state.grounding);
+  ctx.events.emit({ type: 'message', actor: 'moderator', kind: 'grounding', markdown: md });
+  ctx.transcript(`\n${md}\n`);
+  log.moderator(ctx.state.grounding.summary);
+}
+
 export async function runRedTeam(ctx: PhaseCtx): Promise<void> {
-  log.phase('Phase 6 · Red team — pre-mortem');
+  log.phase('Phase 7 · Red team — pre-mortem');
   ctx.events.emit({ type: 'phase', phase: 'redteam', label: 'Red team · pre-mortem' });
   const config = cfg(ctx);
   const synthesis = ctx.state.synthesis;
   if (!synthesis) throw new Error('red team requested before synthesis was written');
 
+  const groundingMd = ctx.state.grounding ? renderGroundingMd(ctx.state.grounding) : undefined;
   const results = await perSeat(
     ctx,
     'red-teaming the recommendation',
@@ -499,7 +586,7 @@ export async function runRedTeam(ctx: PhaseCtx): Promise<void> {
         `${seat.id}/redteam`,
         seat.model,
         prompts.panelSystem(seat, config, personaFor(ctx.state.personas, seat)),
-        prompts.redteamUser(synthesis),
+        prompts.redteamUser(synthesis, groundingMd),
         RedTeamOutSchema,
         null,
       );
@@ -566,12 +653,15 @@ export async function runRedTeam(ctx: PhaseCtx): Promise<void> {
 }
 
 export async function runSignoff(ctx: PhaseCtx): Promise<void> {
-  log.phase('Phase 7 · Sign-off');
+  log.phase('Phase 8 · Sign-off');
   ctx.events.emit({ type: 'phase', phase: 'signoff', label: 'Sign-off' });
   const config = cfg(ctx);
   const synthesis = ctx.state.synthesis;
   if (!synthesis) throw new Error('sign-off requested before synthesis was written');
-  const redteamMd = ctx.state.redteam ? renderRedTeamMd(ctx.state.redteam) : undefined;
+  const extras = {
+    ...(ctx.state.grounding ? { groundingMd: renderGroundingMd(ctx.state.grounding) } : {}),
+    ...(ctx.state.redteam ? { redteamMd: renderRedTeamMd(ctx.state.redteam) } : {}),
+  };
   const results = await perSeat(
     ctx,
     'signing off',
@@ -581,7 +671,7 @@ export async function runSignoff(ctx: PhaseCtx): Promise<void> {
         `${seat.id}/signoff`,
         seat.model,
         prompts.panelSystem(seat, config, personaFor(ctx.state.personas, seat)),
-        prompts.signoffUser(synthesis, redteamMd),
+        prompts.signoffUser(synthesis, extras),
         SignoffOutSchema,
         null,
       );

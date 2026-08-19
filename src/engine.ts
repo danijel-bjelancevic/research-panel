@@ -11,6 +11,7 @@ import {
   runBrief,
   runDebateRound,
   runDivergence,
+  runGrounding,
   runPersonas,
   runRedTeam,
   runSignoff,
@@ -82,8 +83,17 @@ export async function runEngine(opts: EngineOpts): Promise<SessionState> {
         case 'debate':
           await debateStep(ctx);
           break;
-        case 'synthesis':
+        case 'synthesis': {
           await runSynthesis(ctx);
+          const groundingOn = config.grounding.enabled && config.webSearch.enabled;
+          if (config.grounding.enabled && !config.webSearch.enabled) {
+            log.info('grounding skipped — fact-checking without web search would be guesswork');
+          }
+          state.nextPhase = groundingOn ? 'grounding' : config.redTeam.enabled ? 'redteam' : 'signoff';
+          break;
+        }
+        case 'grounding':
+          await runGrounding(ctx);
           state.nextPhase = config.redTeam.enabled ? 'redteam' : 'signoff';
           break;
         case 'redteam':
