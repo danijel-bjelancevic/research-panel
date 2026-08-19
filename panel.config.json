@@ -1,0 +1,66 @@
+{
+  "seats": [
+    {
+      "id": "claude",
+      "model": "anthropic/claude-opus-5"
+    },
+    {
+      "id": "gpt",
+      "model": "openai/gpt-5.6-sol-pro"
+    },
+    {
+      "id": "gemini",
+      "model": "google/gemini-3.1-pro-preview"
+    },
+    {
+      "id": "kimi",
+      "model": "moonshotai/kimi-k3"
+    }
+  ],
+  "moderator": {
+    "model": "anthropic/claude-opus-5"
+  },
+  "ideasPerSeat": 3,
+  "rounds": {
+    "min": 2,
+    "max": 5
+  },
+  "convergence": {
+    "agreeSeats": 3
+  },
+  "webSearch": {
+    "enabled": true,
+    "engine": "exa",
+    "maxResults": 7
+  },
+  "rubric": [
+    {
+      "key": "feasibility",
+      "label": "Can a small team ship a credible v1 within ~6 months?",
+      "weight": 1
+    },
+    {
+      "key": "demand",
+      "label": "Is there evidence people pay to solve this today?",
+      "weight": 1.5
+    },
+    {
+      "key": "differentiation",
+      "label": "Why does this win against existing alternatives?",
+      "weight": 1
+    },
+    {
+      "key": "fit",
+      "label": "Fit with the owner’s stated skills and constraints",
+      "weight": 1
+    },
+    {
+      "key": "upside",
+      "label": "Size of the prize if it works",
+      "weight": 0.8
+    }
+  ],
+  "maxCostUsd": 20,
+  "outputDir": "~/research-panels",
+  "requestTimeoutMs": 700000
+}

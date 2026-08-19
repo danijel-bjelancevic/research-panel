@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+*.log
+
+ai-product-context.md
+ai-saas-context.md
